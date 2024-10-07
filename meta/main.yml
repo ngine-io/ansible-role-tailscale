@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: tailscale
+  namespace: ngine_io
+  author: René Moser
+  company: renemoser.net / ngine.io
+  description: Tailscale
+  license: "license (Apache2, MIT)"
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Debian
+      versions:
+        # 12
+        - bookworm
+  galaxy_tags:
+    - vpn
+    - tailscale

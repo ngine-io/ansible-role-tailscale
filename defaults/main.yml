@@ -1,0 +1,9 @@
+---
+tailscale__apt_key_url: https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg
+tailscale__apt_repository_host: pkgs.tailscale.com
+tailscale__apt_repository_url: https://{{ tailscale__apt_repository_host }}/stable/debian
+
+tailscale__version: ""
+tailscale__package: tailscale
+tailscale__auth_token:
+tailscale__subnets: []

@@ -1,0 +1,68 @@
+---
+- name: Install HTTPS transport for apt
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+  when: tailscale__apt_repository_url.startswith('https')
+  register: result
+  until: result is succeeded
+  retries: 5
+  delay: 2
+
+- name: Import GPG key to apt
+  ansible.builtin.get_url:
+    url: "{{ tailscale__apt_key_url }}"
+    dest: /etc/apt/trusted.gpg.d/tailscale.gpg
+    mode: "0644"
+    owner: "root"
+  register: result
+  until: result is succeeded
+  retries: 5
+  delay: 2
+
+- name: Add repository
+  ansible.builtin.apt_repository:
+    repo: deb {{ tailscale__apt_repository_url }} {{ ansible_distribution_release }} main
+
+- name: Install from repository
+  ansible.builtin.apt:
+    name: "{{ tailscale__package + '=' + tailscale__version if tailscale__version else tailscale__package }}"
+  register: result
+  until: result is succeeded
+  retries: 5
+  delay: 2
+
+- name: Configure IP forward
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+  with_items:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+  notify: Restart tailscaled
+
+- name: Start and enable service
+  ansible.builtin.systemd:
+    name: tailscaled.service
+    state: started
+    enabled: true
+
+- name: Tailscale status
+  ansible.builtin.command: tailscale status --self --peers=false --json
+  register: _tailscale__status
+  changed_when: false
+  check_mode: false
+
+- name: Print Tailscale Backend State
+  ansible.builtin.debug:
+    msg: "BackendState is {{ _tailscale__status.stdout | ansible.builtin.from_json | community.general.json_query('BackendState') }}"
+
+- name: Tailscale up
+  ansible.builtin.command: # noqa: no-changed-when
+    args: >
+      tailscale up
+      --auth-key={{ tailscale__auth_token }}
+      --advertise-routes={{ tailscale__subnets | join(',') }}
+  when: tailscale__auth_token and _tailscale__status.stdout | ansible.builtin.from_json | community.general.json_query('BackendState') == 'NeedsLogin'
+  register: result
