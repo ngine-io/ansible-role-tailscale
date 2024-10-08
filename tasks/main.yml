@@ -15,7 +15,7 @@
     url: "{{ tailscale__apt_key_url }}"
     dest: /etc/apt/trusted.gpg.d/tailscale.gpg
     mode: "0644"
-    owner: "root"
+    owner: root
   register: result
   until: result is succeeded
   retries: 5
@@ -54,9 +54,13 @@
   changed_when: false
   check_mode: false
 
-- name: Print Tailscale Backend State
+- name: Set fact Tailscale backend state
+  ansible.builtin.set_fact:
+    _tailscale__backend_state: "{{ _tailscale__status.stdout | ansible.builtin.from_json | community.general.json_query('BackendState') }}"
+
+- name: Print Tailscale backend state
   ansible.builtin.debug:
-    msg: "BackendState is {{ _tailscale__status.stdout | ansible.builtin.from_json | community.general.json_query('BackendState') }}"
+    msg: "BackendState is {{ _tailscale__backend_state }}"
 
 - name: Tailscale up
   ansible.builtin.command: # noqa: no-changed-when
@@ -64,5 +68,5 @@
       tailscale up
       --auth-key={{ tailscale__auth_token }}
       --advertise-routes={{ tailscale__subnets | join(',') }}
-  when: tailscale__auth_token and _tailscale__status.stdout | ansible.builtin.from_json | community.general.json_query('BackendState') == 'NeedsLogin'
+  when: tailscale__auth_token and _tailscale__backend_state == 'NeedsLogin'
   register: result
