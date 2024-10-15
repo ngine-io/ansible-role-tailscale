@@ -13,9 +13,10 @@
 - name: Import GPG key to apt
   ansible.builtin.get_url:
     url: "{{ tailscale__apt_key_url }}"
-    dest: /etc/apt/trusted.gpg.d/tailscale.gpg
+    dest: /etc/apt/keyrings/tailscale.gpg
     mode: "0644"
     owner: root
+    group: root
   register: result
   until: result is succeeded
   retries: 5
@@ -23,7 +24,7 @@
 
 - name: Add repository
   ansible.builtin.apt_repository:
-    repo: deb {{ tailscale__apt_repository_url }} {{ ansible_distribution_release }} main
+    repo: deb [signed-by=/etc/apt/keyrings/tailscale.gpg] {{ tailscale__apt_repository_url }} {{ ansible_distribution_release }} main
 
 - name: Install from repository
   ansible.builtin.apt:
