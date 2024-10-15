@@ -25,6 +25,7 @@
 - name: Add repository
   ansible.builtin.apt_repository:
     repo: deb [signed-by=/etc/apt/keyrings/tailscale.gpg] {{ tailscale__apt_repository_url }} {{ ansible_distribution_release }} main
+    filename: tailscale
 
 - name: Install from repository
   ansible.builtin.apt:
