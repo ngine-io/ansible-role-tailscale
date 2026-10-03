@@ -5,5 +5,5 @@ tailscale__apt_repository_url: https://{{ tailscale__apt_repository_host }}/stab
 
 tailscale__version: ""
 tailscale__package: tailscale
-tailscale__auth_token:
+tailscale__auth_token: ""
 tailscale__subnets: []

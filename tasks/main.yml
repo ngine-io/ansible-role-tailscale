@@ -1,14 +1,19 @@
 ---
-- name: Install HTTPS transport for apt
+- name: Install CA certificates
   ansible.builtin.apt:
-    name:
-      - apt-transport-https
-      - ca-certificates
-  when: tailscale__apt_repository_url.startswith('https')
+    name: ca-certificates
   register: result
   until: result is succeeded
   retries: 5
   delay: 2
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
 
 - name: Import GPG key to apt
   ansible.builtin.get_url:
@@ -22,14 +27,25 @@
   retries: 5
   delay: 2
 
+- name: Remove legacy one-line repository file
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/tailscale.list
+    state: absent
+
 - name: Add repository
-  ansible.builtin.apt_repository:
-    repo: deb [signed-by=/etc/apt/keyrings/tailscale.gpg] {{ tailscale__apt_repository_url }} {{ ansible_distribution_release }} main
-    filename: tailscale
+  ansible.builtin.deb822_repository:
+    name: tailscale
+    types: deb
+    uris: "{{ tailscale__apt_repository_url }}"
+    suites: "{{ ansible_distribution_release }}"
+    components: main
+    signed_by: /etc/apt/keyrings/tailscale.gpg
+  register: _tailscale__repository
 
 - name: Install from repository
   ansible.builtin.apt:
     name: "{{ tailscale__package + '=' + tailscale__version if tailscale__version else tailscale__package }}"
+    update_cache: "{{ _tailscale__repository is changed }}"
   register: result
   until: result is succeeded
   retries: 5
@@ -38,8 +54,9 @@
 - name: Configure IP forward
   ansible.posix.sysctl:
     name: "{{ item }}"
-    value: '1'
-  with_items:
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-tailscale.conf
+  loop:
     - net.ipv4.ip_forward
     - net.ipv6.conf.all.forwarding
   notify: Restart tailscaled
@@ -58,17 +75,21 @@
 
 - name: Set fact Tailscale backend state
   ansible.builtin.set_fact:
-    _tailscale__backend_state: "{{ _tailscale__status.stdout | ansible.builtin.from_json | community.general.json_query('BackendState') }}"
+    _tailscale__backend_state: "{{ (_tailscale__status.stdout | ansible.builtin.from_json).BackendState }}"
 
 - name: Print Tailscale backend state
   ansible.builtin.debug:
     msg: "BackendState is {{ _tailscale__backend_state }}"
 
 - name: Tailscale up
-  ansible.builtin.command: # noqa: no-changed-when
-    args: >
-      tailscale up
-      --auth-key={{ tailscale__auth_token }}
-      --advertise-routes={{ tailscale__subnets | join(',') }}
-  when: tailscale__auth_token and _tailscale__backend_state == 'NeedsLogin'
-  register: result
+  ansible.builtin.command:
+    argv:
+      - tailscale
+      - up
+      - --auth-key={{ tailscale__auth_token }}
+      - --advertise-routes={{ tailscale__subnets | join(',') }}
+  when:
+    - tailscale__auth_token is truthy
+    - _tailscale__backend_state == 'NeedsLogin'
+  changed_when: true
+  no_log: true
