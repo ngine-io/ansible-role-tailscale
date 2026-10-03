@@ -12,6 +12,8 @@ galaxy_info:
       versions:
         # 12
         - bookworm
+        # 13
+        - trixie
   galaxy_tags:
     - vpn
     - tailscale

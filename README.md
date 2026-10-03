@@ -2,11 +2,11 @@
 
 # Ansible Role: Tailscale
 
-Installs [Tailscale](https://tailscale.com/) server on Debian Linux.
+Installs [Tailscale](https://tailscale.com/) on Debian Linux (12 bookworm, 13 trixie).
 
 ## Requirements
 
-See `requirements.txt`.
+Ansible >= 2.17 with the `ansible.posix` collection.
 
 ## Installation
 
