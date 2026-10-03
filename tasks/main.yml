@@ -1,7 +1,10 @@
 ---
-- name: Install CA certificates
+- name: Install prerequisites
   ansible.builtin.apt:
-    name: ca-certificates
+    name:
+      - ca-certificates
+      # required by ansible.builtin.deb822_repository
+      - python3-debian
   register: result
   until: result is succeeded
   retries: 5
